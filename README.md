@@ -1,8 +1,106 @@
-- Lightweight, low memory footprint csv editor
-- Supports CSV and XLSX
-- macOS based
-- Python 3.7+
-- Requires pyarrow, pandas, openpyxl for csv/xlsx ops
+# CSVEdit — Terminal CSV/XLSX Editor
+
+A fast, curses-based **terminal spreadsheet editor** for `.csv` and `.xlsx` files.  
+Optimized for large datasets, low memory usage, and productivity in the command line.
+
+---
+
+## Key Bindings
+
+### Navigation
+| Key | Action |
+|-----|--------|
+| ↑ / ↓ / ← / → | Move cursor |
+| PgUp / PgDn | Scroll up/down one page |
+| Home / End | Jump to first or last column |
+| g | Go to specific row number |
+
+---
+
+### Editing
+| Key | Action |
+|-----|--------|
+| e | Edit current cell |
+| d | Clear current cell |
+| r | Insert new row below |
+| R | Insert new row above |
+| x | Delete current row |
+| C | Insert new column right |
+| V | Insert new column left |
+| X | Delete current column |
+
+---
+
+### Copy / Paste
+| Key | Action |
+|-----|--------|
+| ; | Start selection mode |
+| Enter | Confirm selection |
+| c | Copy selected cells |
+| v | Paste copied block |
+| Esc | Cancel selection |
+
+---
+
+### Search
+| Key | Action |
+|-----|--------|
+| / | Start text search |
+| n | Next match |
+| N | Previous match |
+
+---
+
+### Popups & Info
+| Key | Action |
+|-----|--------|
+| f | Show full cell content |
+| **Shift+F** | Show scrollable popup for long content |
+| ? | Show help popup (press again to close) |
+
+---
+
+### File Operations
+| Key | Action |
+|-----|--------|
+| s | Save file |
+| :w | Write file |
+| :q | Quit |
+| :wq | Write and quit |
+| q | Quit (press again to force) |
+
+---
+
+## Supported File Types
+
+| Format | Read | Write | Notes |
+|---------|------|--------|-------|
+| `.csv` | ✅ | ✅ | Fully supported |
+| `.xlsx` | ✅ | ⚠️ | Converted internally — some formatting may be lost |
+
+> Unsupported file types trigger a curses popup error:
+> ```
+> Error: File type not supported (.txt)
+> Press any key to exit.
+> ```
+
+---
+
+## Dependencies
+
+| Package | Purpose |
+|----------|----------|
+| `python3` (≥3.8) | Core runtime |
+| `curses` | Terminal UI |
+| `openpyxl` | XLSX read/write support |
+| `csv` | Native CSV streaming |
+| `shutil`, `os`, `threading`, `multiprocessing` | File management and concurrency |
+| `ProcessPoolExecutor` | Async processing for background writes |
+
+Install them with:
+```bash
+pip install openpyxl
+```
 
 ## Installation
 
