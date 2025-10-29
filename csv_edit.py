@@ -1114,21 +1114,50 @@ def show_cell_popup(stdscr, ed):
     stdscr.refresh()
     draw_screen(stdscr, ed)
 
+def show_error_popup(stdscr, message: str):
+    h, w = stdscr.getmaxyx()
+    lines = [
+        " ERROR ",
+        "",
+        message,
+        "",
+        "Press any key to exit."
+    ]
+    box_h = len(lines) + 2
+    box_w = min(max(len(line) for line in lines) + 4, w - 4)
+    box_y = (h - box_h) // 2
+    box_x = (w - box_w) // 2
 
+    win = curses.newwin(box_h, box_w, box_y, box_x)
+    win.keypad(True)
+    win.box()
+    for i, line in enumerate(lines, start=1):
+        try:
+            win.addstr(i, 2, line[:box_w - 4])
+        except curses.error:
+            pass
+    win.refresh()
+    win.getch()
 
 
 # ---------- Main loop ----------
 def main(stdscr):
     if len(sys.argv) < 2:
-        print("Usage: python3 csv_edit.py <file.csv|file.xlsx>")
+        show_error_popup(stdscr, "Usage: python3 csv_edit.py <file.csv|file.xlsx>")
         return
+
+    path = sys.argv[1]
+    filename, ext = os.path.splitext(path)
+
+    if ext.lower() not in [".csv", ".xlsx"]:
+        show_error_popup(stdscr, f"Unsupported file type '{ext}'. Supported formats: .csv, .xlsx")
+        return
+    
     curses.curs_set(0)
     stdscr.timeout(100)
-    path = sys.argv[1]
+
     if not os.path.exists(path):
         open(path, 'w', encoding='utf-8').close()
-
-    filename, ext = os.path.splitext(path)
 
     ed = Editor(path)
     ed.status = "Ready - ? for help" if ext == ".csv" else "WARNING: SOME DATA MAY BE LOST DUE TO CSV LIMITATIONS"
