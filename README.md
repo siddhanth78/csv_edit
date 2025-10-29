@@ -5,6 +5,11 @@ Optimized for large datasets, low memory usage, and productivity in the command 
 
 ---
 
+Run using:
+`python3 csv_edit.py <file.csv|file.xlsx>`
+or
+`csvedit <file.csv|file.xlsx>` after installation (script below)
+
 ## Key Bindings
 
 ### Navigation
@@ -154,7 +159,7 @@ echo ""
 
 ```
 
-## Uninstall
+## Uninstallation
 
 ```
 #!/usr/bin/env bash
