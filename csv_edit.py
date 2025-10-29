@@ -1014,7 +1014,7 @@ def show_help_popup(stdscr):
         "  /  Search text       n / N  Next / Prev match",
         "",
         " ─ Misc ─",
-        "  g  Go to row         f  Full cell info",
+        "  g  Go to row         f / F Full cell info",
         "  s  Save              :w, :q, :wq  Write/Quit",
         "  q  Quit (again to force)",
         "",
@@ -1050,6 +1050,71 @@ def show_help_popup(stdscr):
         elif key == curses.KEY_DOWN:
             if top_line + box_h - 2 < len(help_text):
                 top_line += 1
+
+def show_cell_popup(stdscr, ed):
+    """Show full cell content in a centered popup, scrollable in both directions. Closes on F/f."""
+    cell_value = ed.get_cell(ed.current_row, ed.current_col)
+    cell_lines = cell_value.splitlines() or ["(empty)"]
+
+    h, w = stdscr.getmaxyx()
+    box_h = min(len(cell_lines) + 4, h - 2)
+    max_line_len = max(len(line) for line in cell_lines)
+    box_w = min(max_line_len + 6, w - 4)
+    box_y = (h - box_h) // 2
+    box_x = (w - box_w) // 2
+
+    win = curses.newwin(box_h, box_w, box_y, box_x)
+    win.keypad(True)
+    top_line = 0
+    left_offset = 0
+
+    while True:
+        win.clear()
+        win.box()
+
+        title = f" Cell [{ed.current_row+1},{ed.current_col+1}] "
+        try:
+            win.addstr(0, max(2, (box_w - len(title)) // 2), title, curses.A_REVERSE)
+        except curses.error:
+            pass
+
+        # Draw visible portion of lines
+        visible_lines = cell_lines[top_line: top_line + box_h - 3]
+        for i, line in enumerate(visible_lines, start=1):
+            segment = line[left_offset:left_offset + (box_w - 4)]
+            try:
+                win.addstr(i, 2, segment)
+            except curses.error:
+                pass
+
+        # Optional scroll indicator
+        if left_offset > 0:
+            win.addstr(box_h - 2, 2, "←", curses.A_DIM)
+        if left_offset + (box_w - 4) < max_line_len:
+            win.addstr(box_h - 2, box_w - 3, "→", curses.A_DIM)
+
+        win.refresh()
+
+        key = win.getch()
+        if key in (ord('f'), ord('F')):
+            break
+        elif key == curses.KEY_UP:
+            top_line = max(0, top_line - 1)
+        elif key == curses.KEY_DOWN:
+            if top_line + box_h - 3 < len(cell_lines):
+                top_line += 1
+        elif key == curses.KEY_LEFT:
+            left_offset = max(0, left_offset - 4)
+        elif key == curses.KEY_RIGHT:
+            if left_offset + (box_w - 4) < max_line_len:
+                left_offset += 4
+
+    del win
+    stdscr.touchwin()
+    stdscr.refresh()
+    draw_screen(stdscr, ed)
+
+
 
 
 # ---------- Main loop ----------
@@ -1205,6 +1270,8 @@ def main(stdscr):
             elif key == ord('V'):
                 ed.insert_col_left()
                 ed.reload_visible()
+            elif key == ord('F'):
+                show_cell_popup(stdscr, ed)
             elif key == ord('X'):
                 ed.delete_current_col()
                 ed.reload_visible()
