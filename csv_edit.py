@@ -1014,7 +1014,7 @@ def show_help_popup(stdscr):
         "  /  Search text       n / N  Next / Prev match",
         "",
         " ─ Misc ─",
-        "  g  Go to row         f / F Full cell info",
+        "  g  Go to row         f  Full cell info",
         "  s  Save              :w, :q, :wq  Write/Quit",
         "  q  Quit (again to force)",
         "",
@@ -1128,8 +1128,10 @@ def main(stdscr):
     if not os.path.exists(path):
         open(path, 'w', encoding='utf-8').close()
 
+    filename, ext = os.path.splitext(path)
+
     ed = Editor(path)
-    ed.status = "Ready - ? for help"
+    ed.status = "Ready - ? for help" if ext == ".csv" else "WARNING: SOME DATA MAY BE LOST DUE TO CSV LIMITATIONS"
 
     try:
         while True:
