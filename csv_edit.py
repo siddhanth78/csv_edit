@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-"""
-csv_editor_streaming_final.py
-
-Terminal streaming CSV/XLSX editor (curses) with:
-- Low-memory line-by-line streaming for structural edits
-- Curses UI with fixed 50-row viewport
-- Multi-cell selection: ';' to start, arrows to expand, Enter confirm (copy), Esc cancel
-- Copy/Paste (overwrite) using internal clipboard
-- Insert/Delete rows & columns (deterministic behavior)
-- Search with '/', navigate results with 'n'/'N'
-- Atomic save with .bak; final save in original format (.csv or .xlsx)
-- Enforces minimum 1 row x 1 column (prevents destructive deletes)
-- Structural ops wait until the stream worker applies them (prevent phantom UI)
-"""
 
 import os
 import sys
