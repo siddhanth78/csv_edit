@@ -1,5 +1,6 @@
 - Lightweight, low memory footprint csv editor
 - Supports CSV and XLSX
+- macOS based
 - Python 3.7+
 - Requires pyarrow, pandas, openpyxl for csv/xlsx ops
 
