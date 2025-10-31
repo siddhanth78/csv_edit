@@ -920,6 +920,8 @@ class VimCSVEditor:
                         if self.cursor_row >= len(self.buffer.data):
                             self.cursor_row = len(self.buffer.data) - 1
                 self.adjust_scroll()
+                # Force complete screen refresh to prevent multiline spillover
+                self.stdscr.clear()
                 self.status_message = f"Deleted {count} row(s)"
         elif key == ord('D'):
             # Duplicate current row
@@ -937,6 +939,8 @@ class VimCSVEditor:
                 if self.cursor_col >= len(self.buffer.headers):
                     self.cursor_col = len(self.buffer.headers) - 1
                 self.adjust_scroll()
+                # Force complete screen refresh to prevent multiline spillover
+                self.stdscr.clear()
                 self.status_message = "Deleted column"
             else:
                 self.status_message = "Cannot delete last column"
@@ -2370,6 +2374,9 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
         """Enhanced screen drawing with better visual feedback and fullscreen edit mode"""
         height, width = stdscr.getmaxyx()
         
+        # Complete screen clear to prevent any multiline spillover artifacts
+        stdscr.clear()
+        
         # Handle fullscreen edit mode
         if self.mode == 'FULLSCREEN_EDIT':
             self.draw_fullscreen_edit(stdscr)
@@ -2426,7 +2433,18 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
         if self.mode == 'INSERT':
             edit_bar_content = self.edit_buffer
         elif self.buffer.data and self.cursor_row < len(self.buffer.data):
-            edit_bar_content = self.buffer.get_cell(self.cursor_row, self.cursor_col)
+            raw_content = self.buffer.get_cell(self.cursor_row, self.cursor_col)
+            # Only show first line in edit bar to prevent spillover
+            lines = raw_content.split('\n')
+            first_line = lines[0] if lines else ""
+            # Add indicator if there are multiple lines
+            if len(lines) > 1:
+                edit_bar_content = first_line + " ↵"
+            else:
+                edit_bar_content = first_line
+        
+        # Sanitize edit bar content to absolutely prevent newlines
+        edit_bar_content = edit_bar_content.replace('\n', '').replace('\r', '')
         
         edit_bar = edit_bar_label + edit_bar_content
         try:
@@ -2503,10 +2521,29 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
                 col_width = self.buffer.get_column_width(col_idx)
                 cell_value = self.buffer.get_cell(row_idx, col_idx)
                 
-                # Truncate cell value if needed
-                display_value = cell_value[:col_width-1]
-                if len(cell_value) > col_width-1:
+                # Handle multiline content properly - take only first line for display
+                lines = cell_value.split('\n')
+                first_line = lines[0] if lines else ""
+                
+                # Extra safety: remove any remaining newlines or special characters
+                first_line = first_line.replace('\n', '').replace('\r', '').replace('\t', ' ')
+                
+                # Truncate cell value if needed (only show first line)
+                display_value = first_line[:col_width-1]
+                if len(first_line) > col_width-1:
                     display_value = display_value[:-1] + "…"
+                
+                # Add indicator if cell has multiple lines
+                if len(lines) > 1:
+                    if len(display_value) < col_width-2:
+                        display_value += "↵"  # Add multiline indicator
+                    else:
+                        display_value = display_value[:-1] + "↵"
+                
+                # Final safety: ensure no newlines in display text
+                display_value = display_value.replace('\n', '').replace('\r', '')
+                # Absolutely ensure we don't exceed column width
+                display_value = display_value[:col_width-1]
                 
                 # Determine cell highlighting
                 is_current_cell = (row_idx == self.cursor_row and col_idx == self.cursor_col)
@@ -2514,23 +2551,31 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
                 is_search_result = (row_idx, col_idx) in self.search_manager.search_results
                 
                 cell_text = f"{display_value:<{col_width}}"
+                # Final sanity check - truncate cell_text to exact column width  
+                cell_text = cell_text[:col_width]
                 
                 try:
-                    if is_current_cell:
-                        # Current cell - bright reverse
-                        stdscr.addstr(screen_row, x_offset, cell_text, curses.A_REVERSE | curses.A_BOLD)
-                    elif is_selected:
-                        # Selected cells
-                        stdscr.addstr(screen_row, x_offset, cell_text, curses.A_STANDOUT)
-                    elif is_search_result:
-                        # Search result highlight
-                        stdscr.addstr(screen_row, x_offset, cell_text, curses.A_UNDERLINE)
-                    elif is_current_row:
-                        # Current row - subtle highlight
-                        stdscr.addstr(screen_row, x_offset, cell_text, curses.A_DIM)
-                    else:
-                        # Normal cell
-                        stdscr.addstr(screen_row, x_offset, cell_text)
+                    # Extra safety: ensure we're within screen bounds and table area
+                    height, width = stdscr.getmaxyx()
+                    max_table_row = 3 + self.visible_rows  # Table ends at this row
+                    
+                    # Only draw if within proper table bounds
+                    if screen_row < max_table_row and screen_row < height - 2 and x_offset < width - col_width:
+                        if is_current_cell:
+                            # Current cell - bright reverse
+                            stdscr.addstr(screen_row, x_offset, cell_text, curses.A_REVERSE | curses.A_BOLD)
+                        elif is_selected:
+                            # Selected cells
+                            stdscr.addstr(screen_row, x_offset, cell_text, curses.A_STANDOUT)
+                        elif is_search_result:
+                            # Search result highlight
+                            stdscr.addstr(screen_row, x_offset, cell_text, curses.A_UNDERLINE)
+                        elif is_current_row:
+                            # Current row - subtle highlight
+                            stdscr.addstr(screen_row, x_offset, cell_text, curses.A_DIM)
+                        else:
+                            # Normal cell
+                            stdscr.addstr(screen_row, x_offset, cell_text)
                 except curses.error:
                     pass
                 
