@@ -425,13 +425,6 @@ vim_csv_editor.py
 
 This project is open source. See implementation for specific licensing terms.
 
-## 🙏 Acknowledgments
-
-- **Vim**: For the inspiring keybinding model
-- **Curses**: For terminal UI capabilities
-- **PyArrow**: For high-performance CSV operations
-- **Pandas**: For Excel file support
-
 ---
 
 **Quick Reference Card**: Press `F1` or `H` in the editor for interactive help.
