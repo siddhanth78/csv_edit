@@ -5,7 +5,7 @@ A lightning-fast, buffer-based CSV editor with vim-like keybindings, powered by 
 ## 🚀 Features
 
 ### Core Functionality
-- **Vim-like Navigation**: Full hjkl movement with count prefixes (5j, 3w, etc.)
+- **Vim-like Navigation**: Full hjkl movement
 - **Multiple Edit Modes**: Normal, Insert, Visual, Command, Search, and Fullscreen Edit
 - **Smart Data Handling**: Preserves int/float/string types, auto-detects data types
 - **Excel Integration**: Reads XLSX files with sheet selection, saves as CSV
