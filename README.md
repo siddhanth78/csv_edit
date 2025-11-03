@@ -29,7 +29,7 @@ pip install curses pyarrow pandas openpyxl --break-system-packages
 
 ### Quick Start
 ```bash
-python3 vim_csv_editor.py [filename.csv]
+python3 csv_edit_v3.py [filename.csv]
 ```
 
 If no filename is provided, creates a new CSV with default structure.
