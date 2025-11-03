@@ -55,12 +55,12 @@ python3 vim_csv_editor.py new_data.csv
 #### Navigation
 | Key | Action | Example |
 |-----|--------|---------|
-| `h,j,k,l` | Move left/down/up/right | `5j` moves down 5 rows |
-| `w,b` | Next/previous column | `3w` moves right 3 columns |
-| `0,$` | Beginning/end of row | Jump to first/last column |
-| `^` | First non-empty cell | Skip empty columns |
-| `g,G` | First/last row | `10G` goes to row 10 |
-| `H,M,L` | Top/middle/bottom of screen | Screen positioning |
+| `h,j,k,l` | Move left/down/up/right |
+| `w,b` | Next/previous column |
+| `0,$` | Beginning/end of row |
+| `^` | First non-empty cell |
+| `g,G` | First/last row |
+| `H,M,L` | Top/middle/bottom of screen |
 
 #### Page Navigation
 | Key | Action |
@@ -81,12 +81,12 @@ python3 vim_csv_editor.py new_data.csv
 | `r` | Replace char | Replace single character |
 
 #### Row Operations
-| Key | Action | Count Support |
-|-----|--------|---------------|
-| `o` | Insert row below | `3o` inserts 3 rows |
-| `O` | Insert row above | Yes |
-| `d` | Delete row | `2d` deletes 2 rows |
-| `D` | Duplicate row | `3D` duplicates 3 times |
+| Key | Action |
+|-----|--------|
+| `o` | Insert row below |
+| `O` | Insert row above |
+| `d` | Delete row |
+| `D` | Duplicate row |
 
 #### Column Operations
 | Key | Action |
@@ -238,7 +238,7 @@ python3 vim_csv_editor.py new_data.csv
 - **Mode Management**: Handles Normal, Insert, Visual, Command, Search modes
 - **Cursor Management**: Advanced scrolling and navigation
 - **Display Engine**: Curses-based rendering with column width management
-- **Key Binding System**: Vim-like command parsing with count support
+- **Key Binding System**: Vim-like command parsing
 
 #### UndoManager Class
 - **State Tracking**: Captures data and headers for each operation
@@ -269,14 +269,6 @@ buffer.auto_resize_columns()
 
 # Custom width setting
 buffer.set_column_width(col_idx, width)
-```
-
-#### Advanced Navigation
-```python
-# Count-based movement
-self.move_cursor(delta_row, delta_col, count)
-
-# Examples: 5j, 3w, 10G
 ```
 
 ## 🔧 Configuration
