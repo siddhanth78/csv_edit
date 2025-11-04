@@ -39,20 +39,6 @@ python3 csv_edit<_v2|v3|v4>.py [filename.csv]
 
 If no filename is provided, creates a new CSV with default structure.
 
-## 🎮 Usage Guide
-
-### Getting Started
-```bash
-# Open existing file
-python3 vim_csv_editor.py data.csv
-
-# Open Excel file (shows sheet selector)
-python3 vim_csv_editor.py spreadsheet.xlsx
-
-# Create new file
-python3 vim_csv_editor.py new_data.csv
-```
-
 ## ⌨️ Keyboard Reference
 
 ### Normal Mode (Primary Mode)
