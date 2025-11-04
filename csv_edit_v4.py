@@ -2930,7 +2930,6 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
         
         # Load file if provided
         if file_path:
-            from pathlib import Path
             file_existed = Path(file_path).exists()
             
             if self.buffer.load_from_file(file_path):
