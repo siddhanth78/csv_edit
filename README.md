@@ -27,9 +27,14 @@ A lightning-fast, buffer-based CSV editor with vim-like keybindings, powered by 
 pip install curses pyarrow pandas openpyxl --break-system-packages
 ```
 
+### V4 Dependencies
+```bash
+pip install curses polars pandas openpyxl --break-system-packages
+```
+
 ### Quick Start
 ```bash
-python3 csv_edit_v3.py [filename.csv]
+python3 csv_edit<_v2|v3|v4>.py [filename.csv]
 ```
 
 If no filename is provided, creates a new CSV with default structure.
@@ -214,6 +219,7 @@ python3 vim_csv_editor.py new_data.csv
 | `:sort column [asc\|desc]` | Sort by column |
 | `:find pattern` | Search |
 | `:help` | Show help |
+| `:compress` | Compress to ccsv (v4) |
 
 ### Search Mode
 
