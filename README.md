@@ -313,6 +313,11 @@ export TERM=xterm-256color
 pip install curses pyarrow pandas openpyxl --break-system-packages
 ```
 
+```bash
+# Install all required packages (v4)
+pip install curses polars pandas openpyxl --break-system-packages
+```
+
 #### File Permissions
 ```bash
 # Ensure write permissions
@@ -322,7 +327,7 @@ chmod 644 filename.csv
 ### Performance Issues
 - Large files (>1M rows): Use streaming mode
 - Slow scrolling: Reduce column widths
-- Memory usage: Reduce undo history limit
+- Memory usage: Compress to ccsv (v4) or reduce history limits
 
 ## 🔮 Advanced Usage
 
@@ -334,21 +339,6 @@ python3 vim_csv_editor.py data.xlsx
 # 2. Select sheet from interactive dialog
 # 3. Edit with full vim functionality
 # 4. Saves as CSV with preserved types
-```
-
-### Macro-like Operations
-```vim
-# Delete multiple rows
-3dd
-
-# Insert multiple columns
-5c
-
-# Move large distances
-100j
-
-# Select and copy entire sections
-V5jy
 ```
 
 ### Complex Searches
@@ -395,28 +385,5 @@ Ctrl+x
 # - Strings remain strings
 # - Empty cells handled properly
 ```
-
-## 🤝 Contributing
-
-### Code Structure
-```
-vim_csv_editor.py
-├── UndoManager      # Undo/redo functionality
-├── SearchManager    # Search and replace
-├── CSVBuffer        # Data management
-└── VimCSVEditor     # Main editor class
-```
-
-### Adding Features
-1. **New Commands**: Add to `handle_normal_mode()`
-2. **New Modes**: Create new handler method
-3. **Display Changes**: Modify drawing methods
-4. **File Support**: Extend `load_from_file()`
-
-## 📄 License
-
-This project is open source. See implementation for specific licensing terms.
-
----
 
 **Quick Reference Card**: Press `F1` or `H` in the editor for interactive help.
