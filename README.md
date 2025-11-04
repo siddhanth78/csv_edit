@@ -29,7 +29,7 @@ pip install curses pyarrow pandas openpyxl --break-system-packages
 
 ### V4 Dependencies
 ```bash
-pip install curses polars pandas openpyxl --break-system-packages
+pip install curses polars pandas openpyxl zstandard --break-system-packages
 ```
 
 ### Usage
