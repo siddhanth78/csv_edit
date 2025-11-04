@@ -1,4 +1,4 @@
-# Enhanced Vim-like Terminal CSV Editor
+# CSVEdit: Enhanced Vim-like Terminal CSV Editor
 
 A lightning-fast, buffer-based CSV editor with vim-like keybindings, powered by curses and designed for efficient data manipulation in the terminal.
 
