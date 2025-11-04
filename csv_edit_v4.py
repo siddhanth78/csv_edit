@@ -134,48 +134,57 @@ class UndoManager:
     def can_redo(self) -> bool:
         return self.current_index < len(self.history) - 1
 
-
 class SearchManager:
-    """Search and replace functionality"""
+    """Dead simple: build map during search, navigate by index"""
+    __slots__ = ('last_search', 'case_sensitive', 'regex_mode', 'search_results',
+                 'current_result_index')
     
     def __init__(self):
         self.last_search = ""
         self.case_sensitive = False
         self.regex_mode = False
-        self.search_results: List[Tuple[int, int]] = []
+        self.search_results = []
         self.current_result_index = -1
     
     def search(self, data: List[List[str]], query: str, case_sensitive: bool = False, regex_mode: bool = False) -> List[Tuple[int, int]]:
-        """Search for text in data"""
+        """Build the map of all matches"""
         self.last_search = query
         self.case_sensitive = case_sensitive
         self.regex_mode = regex_mode
-        self.search_results = []
+        self.search_results = []  # Clear map
         self.current_result_index = -1
         
         if not query:
             return []
         
-        search_text = query if case_sensitive else query.lower()
-        
-        for row_idx, row in enumerate(data):
-            for col_idx, cell in enumerate(row):
-                cell_text = cell if case_sensitive else cell.lower()
-                
-                if regex_mode:
-                    try:
-                        if re.search(query, cell, re.IGNORECASE if not case_sensitive else 0):
-                            self.search_results.append((row_idx, col_idx))
-                    except re.error:
-                        pass  # Invalid regex, skip
-                else:
-                    if search_text in cell_text:
+        # Build the map - simple nested loop
+        if regex_mode:
+            try:
+                pattern = re.compile(query, 0 if case_sensitive else re.IGNORECASE)
+            except re.error:
+                return []
+            
+            for row_idx, row in enumerate(data):
+                for col_idx, cell in enumerate(row):
+                    if pattern.search(cell):
                         self.search_results.append((row_idx, col_idx))
+        else:
+            if case_sensitive:
+                for row_idx, row in enumerate(data):
+                    for col_idx, cell in enumerate(row):
+                        if query in cell:
+                            self.search_results.append((row_idx, col_idx))
+            else:
+                query_lower = query.lower()
+                for row_idx, row in enumerate(data):
+                    for col_idx, cell in enumerate(row):
+                        if query_lower in cell.lower():
+                            self.search_results.append((row_idx, col_idx))
         
         return self.search_results
     
     def next_result(self) -> Optional[Tuple[int, int]]:
-        """Get next search result"""
+        """Navigate to next index in map"""
         if not self.search_results:
             return None
         
@@ -183,7 +192,7 @@ class SearchManager:
         return self.search_results[self.current_result_index]
     
     def prev_result(self) -> Optional[Tuple[int, int]]:
-        """Get previous search result"""
+        """Navigate to previous index in map"""
         if not self.search_results:
             return None
         
@@ -993,9 +1002,7 @@ class VimCSVEditor:
         self.status_message = "/" if forward else "?"
     
     def perform_search(self, query: str, forward: bool = True):
-        """Perform search and navigate to first result"""
         results = self.search_manager.search(self.buffer.data, query)
-        
         if results:
             if forward:
                 next_pos = self.search_manager.next_result()
@@ -1005,7 +1012,11 @@ class VimCSVEditor:
             if next_pos:
                 self.cursor_row, self.cursor_col = next_pos
                 self.adjust_scroll()
-                self.status_message = f"Found {len(results)} matches"
+                
+                # Simple status with position
+                current = self.search_manager.current_result_index + 1
+                total = len(self.search_manager.search_results)
+                self.status_message = f"Match {current}/{total}"
             else:
                 self.status_message = "No matches found"
         else:
@@ -2854,7 +2865,6 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
                 # Determine cell highlighting
                 is_current_cell = (row_idx == self.cursor_row and col_idx == self.cursor_col)
                 is_selected = (row_idx, col_idx) in self.selected_cells
-                is_search_result = (row_idx, col_idx) in self.search_manager.search_results
                 
                 cell_text = f"{display_value:<{col_width}}"
                 # Final sanity check - truncate cell_text to exact column width  
@@ -2873,12 +2883,6 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
                         elif is_selected:
                             # Selected cells
                             stdscr.addstr(screen_row, x_offset, cell_text, curses.A_STANDOUT)
-                        elif is_search_result:
-                            # Search result highlight
-                            stdscr.addstr(screen_row, x_offset, cell_text, curses.A_UNDERLINE)
-                        elif is_current_row:
-                            # Current row - subtle highlight
-                            stdscr.addstr(screen_row, x_offset, cell_text, curses.A_DIM)
                         else:
                             # Normal cell
                             stdscr.addstr(screen_row, x_offset, cell_text)
