@@ -32,9 +32,9 @@ pip install curses pyarrow pandas openpyxl --break-system-packages
 pip install curses polars pandas openpyxl --break-system-packages
 ```
 
-### Quick Start
+### Usage
 ```bash
-python3 csv_edit<_v2|v3|v4>.py [filename.csv]
+python3 csv_edit[_v2|_v3|_v4].py [filename.csv]
 ```
 
 If no filename is provided, creates a new CSV with default structure.
