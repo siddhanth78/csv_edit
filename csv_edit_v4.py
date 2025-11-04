@@ -463,7 +463,6 @@ class CSVBuffer:
     def select_excel_sheet(self, file_path: str) -> Optional[str]:
         """Show sheet selection dialog for Excel files"""
         try:
-            import pandas as pd
             # Get list of available sheets
             excel_file = pd.ExcelFile(file_path, engine='openpyxl')
             sheet_names = excel_file.sheet_names
