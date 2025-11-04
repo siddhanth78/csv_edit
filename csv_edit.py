@@ -199,6 +199,98 @@ class SearchManager:
         self.current_result_index = (self.current_result_index - 1) % len(self.search_results)
         return self.search_results[self.current_result_index]
 
+class TabManager:
+    """Manages multiple CSV file tabs"""
+    
+    def __init__(self):
+        self.tabs: List[Dict] = []
+        self.current_tab = 0
+        self.tab_counter = 0
+        self.global_clipboard: List[List[str]] = []  # Shared clipboard between tabs
+    
+    def create_tab(self, file_path: str = None, name: str = None,  editor_ref=None) -> int:
+        """Create new tab and return its index"""
+        buffer = CSVBuffer()
+        buffer.editor_ref = editor_ref # Will be set by editor
+        
+        tab = {
+            'id': self.tab_counter,
+            'name': name or "New Tab",  # Default name
+            'buffer': buffer,
+            'cursor_row': 0,
+            'cursor_col': 0,
+            'scroll_row': 0,
+            'scroll_col': 0,
+            'selected_cells': set(),
+            'visual_start': None,
+            'file_path': file_path,
+            'dirty': False
+        }
+        
+        self.tabs.append(tab)
+        tab_index = len(self.tabs) - 1
+        self.tab_counter += 1
+        
+        if file_path:
+            if buffer.load_from_file(file_path):
+                tab['name'] = Path(file_path).name
+                tab['file_path'] = buffer.file_path  # Use buffer's resolved path
+                tab['dirty'] = buffer.dirty
+            else:
+                tab['name'] = f"Failed: {Path(file_path).name}"
+        else:
+            tab['name'] = f"Tab{self.tab_counter}"
+        
+        return tab_index
+    
+    def close_tab(self, index: int) -> bool:
+        """Close tab at index, return False if can't close (last tab)"""
+        if len(self.tabs) <= 1:
+            return False
+        
+        if 0 <= index < len(self.tabs):
+            self.tabs.pop(index)
+            if self.current_tab >= len(self.tabs):
+                self.current_tab = len(self.tabs) - 1
+            elif self.current_tab > index:
+                self.current_tab -= 1
+            return True
+        return False
+    
+    def switch_to_tab(self, index: int) -> bool:
+        """Switch to tab at index"""
+        if 0 <= index < len(self.tabs):
+            self.current_tab = index
+            return True
+        return False
+    
+    def get_current_tab(self) -> Dict:
+        """Get current tab data"""
+        if self.tabs and 0 <= self.current_tab < len(self.tabs):
+            return self.tabs[self.current_tab]
+        return None
+    
+    def get_tab_titles(self) -> List[str]:
+        """Get list of tab titles for display"""
+        titles = []
+        for i, tab in enumerate(self.tabs):
+            title = tab['name'][:15]  # Truncate long names
+            if tab['buffer'].dirty:
+                title += "*"
+            if i == self.current_tab:
+                title = f"[{title}]"
+            titles.append(title)
+        return titles
+    
+    def next_tab(self):
+        """Switch to next tab"""
+        if len(self.tabs) > 1:
+            self.current_tab = (self.current_tab + 1) % len(self.tabs)
+    
+    def prev_tab(self):
+        """Switch to previous tab"""
+        if len(self.tabs) > 1:
+            self.current_tab = (self.current_tab - 1) % len(self.tabs)
 
 class CSVBuffer:
     """Enhanced buffer for CSV data with streaming capabilities"""
@@ -878,13 +970,18 @@ class VimCSVEditor:
     """Enhanced Vim-like CSV editor with curses interface"""
     
     def __init__(self):
-        self.buffer = CSVBuffer()
-        self.buffer.editor_ref = self  # Set reference for sheet selection
+        # Tab management
+        self.tab_manager = TabManager()
+        
+        # Create initial tab
+        self.tab_manager.create_tab()
+        
+        # Current state (will be synced with active tab)
         self.cursor_row = 0
         self.cursor_col = 0
         self.scroll_row = 0
         self.scroll_col = 0
-        self.mode = 'NORMAL'  # NORMAL, INSERT, VISUAL, COMMAND, SEARCH
+        self.mode = 'NORMAL'
         self.selected_cells: Set[Tuple[int, int]] = set()
         self.clipboard: List[List[str]] = []
         self.status_message = "Ready"
@@ -903,17 +1000,22 @@ class VimCSVEditor:
         
         # Auto-save thread
         self.auto_save_enabled = True
-        self.auto_save_interval = 30  # seconds
+        self.auto_save_interval = 30
         self.last_save_time = time.time()
         
         # Enhanced features
-        self.repeat_count = 1  # For vim-like repeat commands
+        self.repeat_count = 1
         self.last_command = ""
         self.macro_recording = False
         self.macro_buffer = ""
         
         # Multi-cursor support (basic)
         self.additional_cursors: List[Tuple[int, int]] = []
+
+        self.tab_manager.create_tab(editor_ref=self)
+        
+        # Set up editor reference for all tab buffers
+        self.sync_current_tab_state()
     
     def start_auto_save(self):
         """Start auto-save thread"""
@@ -929,6 +1031,130 @@ class VimCSVEditor:
         
         auto_save_thread = threading.Thread(target=auto_save_worker, daemon=True)
         auto_save_thread.start()
+
+    @property
+    def buffer(self):
+        """Get current tab's buffer"""
+        current_tab = self.tab_manager.get_current_tab()
+        if current_tab:
+            return current_tab['buffer']
+        return None
+
+    def sync_current_tab_state(self):
+        """Sync editor state with current tab"""
+        current_tab = self.tab_manager.get_current_tab()
+        if current_tab:
+            # Update buffer reference
+            current_tab['buffer'].editor_ref = self
+            
+            # Load tab state to editor
+            self.cursor_row = current_tab['cursor_row']
+            self.cursor_col = current_tab['cursor_col']
+            self.scroll_row = current_tab['scroll_row']
+            self.scroll_col = current_tab['scroll_col']
+            self.selected_cells = current_tab['selected_cells'].copy()
+            self.visual_start = current_tab['visual_start']
+
+    def save_current_tab_state(self):
+        """Save editor state to current tab"""
+        current_tab = self.tab_manager.get_current_tab()
+        if current_tab:
+            current_tab['cursor_row'] = self.cursor_row
+            current_tab['cursor_col'] = self.cursor_col
+            current_tab['scroll_row'] = self.scroll_row
+            current_tab['scroll_col'] = self.scroll_col
+            current_tab['selected_cells'] = self.selected_cells.copy()
+            current_tab['visual_start'] = self.visual_start
+            current_tab['dirty'] = current_tab['buffer'].dirty
+
+    def switch_tab(self, index: int):
+        """Switch to specific tab"""
+        if index < len(self.tab_manager.tabs):
+            self.save_current_tab_state()
+            self.tab_manager.switch_to_tab(index)
+            self.sync_current_tab_state()
+            current_tab = self.tab_manager.get_current_tab()
+            self.status_message = f"Switched to {current_tab['name']}"
+            self.adjust_scroll()
+
+    def create_new_tab(self, file_path: str = None):
+        """Create new tab with optional file"""
+        self.save_current_tab_state()
+        new_index = self.tab_manager.create_tab(file_path, editor_ref=self)
+        self.tab_manager.switch_to_tab(new_index)
+        self.sync_current_tab_state()
+        
+        current_tab = self.tab_manager.get_current_tab()
+        if file_path:
+            self.status_message = f"Opened {current_tab['name']} in new tab"
+        else:
+            self.status_message = f"Created new tab {current_tab['name']}"
+
+    def sync_file_path(self):
+        """Sync file path between tab and buffer"""
+        current_tab = self.tab_manager.get_current_tab()
+        if current_tab and current_tab['buffer'].file_path:
+            current_tab['file_path'] = current_tab['buffer'].file_path
+            current_tab['name'] = Path(current_tab['buffer'].file_path).name
+
+    def close_current_tab(self):
+        """Close current tab"""
+        if len(self.tab_manager.tabs) <= 1:
+            self.status_message = "Cannot close last tab"
+            return False
+        
+        current_tab = self.tab_manager.get_current_tab()
+        if current_tab['buffer'].dirty:
+            # For now, just warn - in full implementation you'd add a confirmation dialog
+            self.status_message = f"Warning: {current_tab['name']} has unsaved changes - use :q! to force"
+            return False
+        
+        tab_name = current_tab['name']
+        if self.tab_manager.close_tab(self.tab_manager.current_tab):
+            self.sync_current_tab_state()
+            self.status_message = f"Closed {tab_name}"
+            return True
+        return False
+
+    def yank_to_global_clipboard(self):
+        """Copy selection to global clipboard (shared between tabs)"""
+        if not self.selected_cells:
+            # Yank current cell
+            self.tab_manager.global_clipboard = [[self.buffer.get_cell(self.cursor_row, self.cursor_col)]]
+        else:
+            # Yank selected range
+            rows = sorted(set(r for r, c in self.selected_cells))
+            cols = sorted(set(c for r, c in self.selected_cells))
+            
+            self.tab_manager.global_clipboard = []
+            for r in rows:
+                row_data = []
+                for c in cols:
+                    if (r, c) in self.selected_cells:
+                        row_data.append(self.buffer.get_cell(r, c))
+                    else:
+                        row_data.append("")
+                self.tab_manager.global_clipboard.append(row_data)
+        
+        self.status_message = f"Yanked to global clipboard {len(self.tab_manager.global_clipboard)}x{len(self.tab_manager.global_clipboard[0]) if self.tab_manager.global_clipboard else 0}"
+
+    def paste_from_global_clipboard(self):
+        """Paste from global clipboard"""
+        if not self.tab_manager.global_clipboard:
+            self.status_message = "Global clipboard empty"
+            return
+        
+        self.buffer.save_state("Paste from global clipboard")
+        
+        for r_offset, row_data in enumerate(self.tab_manager.global_clipboard):
+            for c_offset, value in enumerate(row_data):
+                target_row = self.cursor_row + r_offset
+                target_col = self.cursor_col + c_offset
+                if (target_row < len(self.buffer.data) and 
+                    target_col < len(self.buffer.headers)):
+                    self.buffer.set_cell(target_row, target_col, value, save_state=False)
+        
+        self.status_message = f"Pasted from global clipboard {len(self.tab_manager.global_clipboard)}x{len(self.tab_manager.global_clipboard[0])}"
     
     def parse_count_and_command(self, key: int) -> Tuple[int, int]:
         """Parse repeat count for vim-like commands"""
@@ -1146,6 +1372,13 @@ class VimCSVEditor:
     
     def handle_normal_mode(self, key: int) -> bool:
         """Enhanced normal mode with more vim-like features"""
+
+        # Number keys for quick tab switching
+        if ord('1') <= key <= ord('9'):
+            tab_num = key - ord('1')
+            if tab_num < len(self.tab_manager.tabs):
+                self.switch_tab(tab_num)
+
         count, actual_key = self.parse_count_and_command(key)
         
         if actual_key == -1:  # Still collecting count
@@ -1156,6 +1389,28 @@ class VimCSVEditor:
         
         if key == ord('q'):
             return False  # Quit
+        elif key == ord('t'):  # New tab
+            self.create_new_tab()
+        elif key == ord('T'):  # Close tab
+            self.close_current_tab()
+        elif key == 9:  # Tab key - next tab
+            self.save_current_tab_state()
+            self.tab_manager.next_tab()
+            self.sync_current_tab_state()
+            current_tab = self.tab_manager.get_current_tab()
+            self.status_message = f"Tab: {current_tab['name']}"
+        elif key == 353:  # Shift+Tab - previous tab
+            self.save_current_tab_state()
+            self.tab_manager.prev_tab()
+            self.sync_current_tab_state()
+            current_tab = self.tab_manager.get_current_tab()
+            self.status_message = f"Tab: {current_tab['name']}"
+        elif key == ord('Y'):  # Yank to global clipboard
+            self.yank_to_global_clipboard()
+            if self.mode == 'VISUAL':
+                self.exit_visual_mode()
+        elif key == ord('P'):  # Paste from global clipboard
+            self.paste_from_global_clipboard()
         elif key == ord('I'):  # Capital I for fullscreen edit mode
             self.enter_fullscreen_edit_mode()
         elif key == ord('i'):
@@ -2294,6 +2549,30 @@ S            Sort current column descending
 :sort col    Sort by column name
 :sort col desc  Sort by column descending
 
+TAB MANAGEMENT:
+---------------
+t            New tab
+T            Close current tab  
+Tab          Next tab
+Shift+Tab    Previous tab
+1-9          Quick switch to tab 1-9
+Y            Yank to global clipboard (shared between tabs)
+P            Paste from global clipboard
+
+TAB COMMANDS:
+-------------
+:tabnew      Create new empty tab
+:tabe file   Open file in new tab  
+:tabc        Close current tab
+:tabn        Next tab
+:tabp        Previous tab
+:tabs        List all tabs
+
+GLOBAL CLIPBOARD:
+-----------------
+Y            Copy selection to global clipboard (accessible from all tabs)
+P            Paste from global clipboard
+
 Press any key to continue, 'q' to quit help, or use j/k to scroll...
 """
         
@@ -2520,6 +2799,7 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
             return False
         elif cmd in ['w', 'write']:
             if self.buffer.stream_save():
+                self.sync_file_path()
                 self.status_message = "File saved"
             else:
                 self.status_message = "Save failed"
@@ -2532,6 +2812,7 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
             # Save to specific file
             filename = cmd[2:].strip()
             if self.buffer.stream_save(filename):
+                self.sync_file_path()
                 self.status_message = f"Saved to {filename}"
             else:
                 self.status_message = "Save failed"
@@ -2541,6 +2822,7 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
             if self.buffer.load_from_file(filename):
                 self.cursor_row = self.cursor_col = 0
                 self.scroll_row = self.scroll_col = 0
+                self.sync_file_path()
                 self.status_message = f"Loaded {filename}"
             else:
                 self.status_message = f"Failed to load {filename}"
@@ -2551,6 +2833,37 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
                 self.status_message = f"Compressed in {compress_time:.2f}s - ultra-fast loading enabled!"
             else:
                 self.status_message = "Compression failed"
+
+        elif cmd.startswith('tabnew') or cmd.startswith('tabe'):
+            # Open file in new tab
+            if ' ' in cmd:
+                filename = cmd.split(' ', 1)[1].strip()
+                self.create_new_tab(filename)
+                self.sync_file_path()
+            else:
+                self.create_new_tab()
+        elif cmd == 'tabc' or cmd == 'tabclose':
+            self.close_current_tab()
+        elif cmd == 'tabn' or cmd == 'tabnext':
+            self.save_current_tab_state()
+            self.tab_manager.next_tab()
+            self.sync_current_tab_state()
+            current_tab = self.tab_manager.get_current_tab()
+            self.status_message = f"Tab: {current_tab['name']}"
+        elif cmd == 'tabp' or cmd == 'tabprev':
+            self.save_current_tab_state()
+            self.tab_manager.prev_tab()
+            self.sync_current_tab_state()
+            current_tab = self.tab_manager.get_current_tab()
+            self.status_message = f"Tab: {current_tab['name']}"
+        elif cmd == 'tabs':
+            # List all tabs
+            tab_info = []
+            for i, tab in enumerate(self.tab_manager.tabs):
+                marker = ">" if i == self.tab_manager.current_tab else " "
+                dirty = "*" if tab['buffer'].dirty else " "
+                tab_info.append(f"{marker}{i+1}{dirty} {tab['name']}")
+            self.status_message = "Tabs: " + " | ".join(tab_info)
 
         elif cmd.startswith('saveas '):
             filename = cmd[7:].strip()
@@ -2714,31 +3027,36 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
         
         stdscr.clear()
         
-        # Header line with enhanced info
-        file_display = self.buffer.file_path or '[No Name]'
-        if hasattr(self.buffer, 'current_sheet') and self.buffer.current_sheet:
-            file_display += f" (Sheet: {self.buffer.current_sheet})"
+        current_tab = self.tab_manager.get_current_tab()
+        if current_tab:
+            # Use buffer's file_path, then tab's file_path, then default
+            file_display = (current_tab['buffer'].file_path or 
+                        current_tab['file_path'] or 
+                        '[No Name]')
+            
+            if hasattr(current_tab['buffer'], 'current_sheet') and current_tab['buffer'].current_sheet:
+                file_display += f" (Sheet: {current_tab['buffer'].current_sheet})"
+            
+            header_text = f"File: {file_display} | "
+            header_text += f"Rows: {len(current_tab['buffer'].data)} | "
+            header_text += f"Cols: {len(current_tab['buffer'].headers)} | "
+            header_text += f"Pos: {chr(65 + self.cursor_col % 26)}{self.cursor_row + 1} | "
+            header_text += f"Mode: {self.mode}"
+            header_text += current_tab['buffer'].get_compression_info()
+            
+            if current_tab['buffer'].dirty:
+                header_text += " [+]"
         
-        header_text = f"File: {file_display} | "
-        header_text += f"Rows: {len(self.buffer.data)} | "
-        header_text += f"Cols: {len(self.buffer.headers)} | "
-        header_text += f"Pos: {chr(65 + self.cursor_col % 26)}{self.cursor_row + 1} | "
-        header_text += f"Mode: {self.mode}"
-        header_text += self.buffer.get_compression_info()
-        
-        if self.buffer.dirty:
-            header_text += " [+]"
-        
-        if self.buffer.undo_manager.can_undo():
-            header_text += " [U]"
-        
-        if self.search_manager.search_results:
-            header_text += f" [{len(self.search_manager.search_results)} matches]"
-        
-        try:
-            stdscr.addstr(0, 0, header_text[:width-1])
-        except curses.error:
-            pass
+            if current_tab['buffer'].undo_manager.can_undo():
+                header_text += " [U]"
+            
+            if self.search_manager.search_results:
+                header_text += f" [{len(self.search_manager.search_results)} matches]"
+            
+            try:
+                stdscr.addstr(0, 0, header_text[:width-1])
+            except curses.error:
+                pass
         
         # Enhanced edit bar with more info
         edit_bar_label = f"Cell {chr(65 + self.cursor_col % 26)}{self.cursor_row + 1}"
@@ -2934,15 +3252,16 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
         
         # Load file if provided
         if file_path:
+            self.tab_manager.tabs.clear()
+            self.create_new_tab(file_path)
+            self.sync_current_tab_state()
+
             file_existed = Path(file_path).exists()
-            
-            if self.buffer.load_from_file(file_path):
-                if not file_existed:
-                    self.status_message = f"Created new file {file_path} with default structure"
-                else:
-                    self.status_message = f"Loaded {file_path} ({len(self.buffer.data)} rows, {len(self.buffer.headers)} cols)"
+
+            if not file_existed:
+                self.status_message = f"Created new file {file_path} with default structure"
             else:
-                self.status_message = f"Failed to load {file_path}"
+                self.status_message = f"Loaded {file_path} ({len(self.buffer.data)} rows, {len(self.buffer.headers)} cols)"
         else:
             self.status_message = "Enhanced CSV Editor - F1 for help, :e <file> to open"
         
@@ -2995,6 +3314,10 @@ Press any key to continue, 'q' to quit help, or use j/k to scroll...
 def main():
     """Main entry point"""
     file_path = sys.argv[1] if len(sys.argv) > 1 else None
+
+    if os.path.splitext(file_path)[1] not in ['.csv', '.xlsx', '.ccsv']:
+        print('Supported file types: .csv .xlsx .ccsv')
+        sys.exit(0)
     
     if file_path and file_path.endswith(".xlsx"):
         print("Excel file detected - you'll be able to select which sheet to load.")
