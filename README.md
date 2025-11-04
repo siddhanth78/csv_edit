@@ -9,7 +9,7 @@ A lightning-fast, buffer-based CSV editor with vim-like keybindings, powered by 
 - **Multiple Edit Modes**: Normal, Insert, Visual, Command, Search, and Fullscreen Edit
 - **Smart Data Handling**: Preserves int/float/string types, auto-detects data types
 - **Excel Integration**: Reads XLSX files with sheet selection, saves as CSV
-- **Lightning Performance**: Buffer-based with PyArrow for fast I/O operations
+- **Lightning Performance**: Buffer-based with Polars for fast I/O operations
 
 ### Advanced Features
 - **Undo/Redo System**: Complete operation history with 100-level deep undo
@@ -24,17 +24,12 @@ A lightning-fast, buffer-based CSV editor with vim-like keybindings, powered by 
 
 ### Dependencies
 ```bash
-pip install curses pyarrow pandas openpyxl --break-system-packages
-```
-
-### V4 Dependencies
-```bash
 pip install curses polars pandas openpyxl zstandard --break-system-packages
 ```
 
 ### Usage
 ```bash
-python3 csv_edit[_v2|_v3|_v4].py [filename.csv]
+python3 csv_edit.py [filename.csv | filename.xlsx | filename.ccsv]
 ```
 
 If no filename is provided, creates a new CSV with default structure.
@@ -205,7 +200,7 @@ If no filename is provided, creates a new CSV with default structure.
 | `:sort column [asc\|desc]` | Sort by column |
 | `:find pattern` | Search |
 | `:help` | Show help |
-| `:compress` | Compress to ccsv (v4) |
+| `:compress` | Compress to ccsv |
 
 ### Search Mode
 
@@ -214,33 +209,6 @@ If no filename is provided, creates a new CSV with default structure.
 | `Enter` | Execute search |
 | `Esc` | Cancel search |
 | `Backspace` | Edit pattern |
-
-## 🏗️ Architecture
-
-### Core Components
-
-#### CSVBuffer Class
-- **Data Management**: Stores CSV data as list of lists
-- **Type Preservation**: Maintains original data types (int, float, string)
-- **Undo System**: 100-level operation history
-- **Smart Loading**: Handles CSV and XLSX with sheet selection
-- **Streaming Save**: Memory-efficient saving with PyArrow
-
-#### VimCSVEditor Class
-- **Mode Management**: Handles Normal, Insert, Visual, Command, Search modes
-- **Cursor Management**: Advanced scrolling and navigation
-- **Display Engine**: Curses-based rendering with column width management
-- **Key Binding System**: Vim-like command parsing
-
-#### UndoManager Class
-- **State Tracking**: Captures data and headers for each operation
-- **History Navigation**: Bidirectional undo/redo with descriptions
-- **Memory Management**: Automatic cleanup of old states
-
-#### SearchManager Class
-- **Pattern Matching**: Text and regex search capabilities
-- **Result Navigation**: Forward/backward match cycling
-- **Case Sensitivity**: Configurable search options
 
 ### Key Features Deep Dive
 
@@ -283,20 +251,6 @@ show_column_letters = True
 max_history = 100  # Maximum undo levels
 ```
 
-## 📊 Performance
-
-### Optimizations
-- **PyArrow Integration**: Fast CSV reading/writing
-- **Buffer-based Editing**: Minimal memory usage
-- **Streaming Operations**: Handles large files efficiently
-- **Smart Scrolling**: Only renders visible content
-- **Type Preservation**: Avoids unnecessary conversions
-
-### Benchmarks
-- **File Loading**: 10x faster than pandas for large CSVs
-- **Navigation**: Sub-millisecond cursor movement
-- **Auto-save**: Background operation with no UI blocking
-
 ## 🐛 Troubleshooting
 
 ### Common Issues
@@ -321,20 +275,19 @@ pip install curses polars pandas openpyxl --break-system-packages
 #### File Permissions
 ```bash
 # Ensure write permissions
-chmod 644 filename.csv
+chmod 644 filename
 ```
 
 ### Performance Issues
-- Large files (>1M rows): Use streaming mode
 - Slow scrolling: Reduce column widths
-- Memory usage: Compress to ccsv (v4) or reduce history limits
+- Memory usage: Compress to ccsv or reduce history limits
 
 ## 🔮 Advanced Usage
 
 ### Excel Workflow
 ```bash
 # 1. Open Excel file
-python3 vim_csv_editor.py data.xlsx
+python3 csv_edit.py data.xlsx
 
 # 2. Select sheet from interactive dialog
 # 3. Edit with full vim functionality
@@ -365,13 +318,6 @@ I
 # Save and exit
 Ctrl+x
 ```
-
-## 📝 File Format Support
-
-### Input Formats
-- **CSV**: Native support with auto-detection
-- **XLSX**: Multi-sheet support with selection dialog
-- **XLS**: Legacy Excel format support
 
 ### Output Format
 - **CSV**: Always saves as CSV with proper type preservation
